@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema Doceria - Completo</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Roboto,sans-serif}
+:root{--rosa:#d63384;--rosa-escuro:#ad2b6d;--rosa-claro:#fdf2f8;--sucesso:#198754;--perigo:#dc3545;--info:#0d6efd}
+body{background:#fff5f8;padding:10px;max-width:1000px;margin:0 auto;min-height:100vh}
+h1{color:var(--rosa);text-align:center;margin-bottom:12px;font-size:1.4rem}
+h2{color:var(--rosa-escuro);font-size:1rem;margin:10px 0 6px}
+h3{font-size:.95rem;color:#444;margin:6px 0}
+
+/* Abas */
+.tabs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;position:sticky;top:0;background:#fff5f8;padding:6px 0;z-index:10}
+.tab{flex:1;min-width:65px;padding:8px 4px;background:#f0e0e8;border-radius:8px;text-align:center;cursor:pointer;font-size:.78rem;font-weight:500;border-bottom:3px solid transparent;transition:.2s}
+.tab.ativo{background:#fff;border-bottom-color:var(--rosa);color:var(--rosa);font-weight:700;box-shadow:0 2px 4px rgba(0,0,0,.06)}
+.aba{display:none}
+.aba.ativo{display:block;animation:fade .2s ease}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+
+.card{background:#fff;padding:14px;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,.05);margin-bottom:14px}
+input,select,button{padding:10px 12px;margin:4px 2px;border:1px solid #f0c8dc;border-radius:8px;font-size:.92rem;width:100%}
+button{background:var(--rosa);color:#fff;border:none;cursor:pointer;font-weight:600;transition:.2s}
+button:hover{background:var(--rosa-escuro)}
+button.sm{padding:6px 10px;font-size:.8rem;width:auto}
+button.vermelho{background:var(--perigo)}
+button.vermelho:hover{background:#b02a37}
+button.exportar{background:var(--info);margin:3px}
+button.exportar:hover{background:#0b5ed7}
+button.verde{background:var(--sucesso)}
+button.verde:hover{background:#157347}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;align-items:end}
+table{width:100%;border-collapse:collapse;margin-top:10px;font-size:.82rem;display:block;overflow-x:auto}
+th,td{padding:7px 6px;text-align:left;border-bottom:1px solid #f3e1eb;white-space:nowrap}
+th{background:var(--rosa-claro);color:var(--rosa-escuro)}
+
+.resumo{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}
+.card-resumo{padding:12px;border-radius:10px;text-align:center}
+.valor{font-size:1.15rem;font-weight:700;color:var(--rosa);margin-top:4px;word-break:break-word}
+.baixo{color:var(--perigo)}
+.ok{color:var(--sucesso)}
+
+.linha-ing{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}
+.linha-ing select,.linha-ing input{flex:1;min-width:90px;margin:0}
+.alerta{padding:5px 8px;border-radius:6px;margin-top:5px;font-size:.8rem;display:inline-block}
+.alerta.baixo-estoque{background:#fff3cd;color:#856404}
+
+.grafico-container{position:relative;height:260px;margin:12px 0}
+.botoes-export{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.vazio{text-align:center;color:#999;padding:20px;font-size:.9rem}
+.filtro-periodo{display:flex;gap:6px;align-items:center;margin:8px 0;flex-wrap:wrap}
+.filtro-periodo select{width:auto;min-width:120px}
+
+@media(max-width:480px){
+  body{padding:6px}
+  h1{font-size:1.15rem}
+  .tab{font-size:.7rem;padding:6px 3px;min-width:55px}
+  .card{padding:10px}
+  table{font-size:.75rem}
+  th,td{padding:5px 4px}
+  .resumo{grid-template-columns:1fr 1fr}
+  .grafico-container{height:200px}
+  input,select,button{font-size:.88rem;padding:9px}
+}
+</style>
+</head>
+<body>
+
+<h1>Sistema de Gestao - Doceria</h1>
+
+<div class="tabs">
+  <div class="tab ativo" data-aba="ingredientes">Estoque</div>
+  <div class="tab" data-aba="receitas">Receitas</div>
+  <div class="tab" data-aba="vendas">Vendas</div>
+  <div class="tab" data-aba="financeiro">Financeiro</div>
+</div>
+
+<!-- ABA: INGREDIENTES / ESTOQUE -->
+<div id="ingredientes" class="aba ativo">
+  <div class="card">
+    <h2>Cadastrar Ingrediente</h2>
+    <div class="grid">
+      <input type="text" id="ing-nome" placeholder="Nome (ex: Farinha)">
+      <input type="number" step="0.01" id="ing-custo" placeholder="Custo embalagem R$">
+      <input type="number" step="0.01" id="ing-qtd" placeholder="Qtd. embalagem">
+      <select id="ing-unidade">
+        <option value="g">g</option><option value="kg">kg</option>
+        <option value="ml">ml</option><option value="l">l</option><option value="un">un</option><option value="cx">cx</option>
+      </select>
+      <input type="number" step="0.01" id="ing-estoque" placeholder="Estoque inicial">
+      <button onclick="cadastrarIngrediente()">Adicionar</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Estoque de Materia-Prima</h2>
+    <div class="botoes-export">
+      <button class="sm exportar" onclick="window.open('/api/exportar/estoque-excel','_blank')">Baixar Excel</button>
+    </div>
+    <div style="overflow-x:auto"><table id="tabela-ing"></table></div>
+  </div>
+</div>
+
+<!-- ABA: RECEITAS -->
+<div id="receitas" class="aba">
+  <div class="card">
+    <h2>Criar Nova Receita / Produto</h2>
+    <div class="grid">
+      <input type="text" id="rec-nome" placeholder="Nome do produto">
+      <input type="number" id="rec-rend" placeholder="Rendimento (und/fatias)">
+      <input type="number" id="rec-margem" value="40" placeholder="Margem lucro %">
+    </div>
+    <h3>Ingredientes da receita:</h3>
+    <div id="rec-itens"></div>
+    <button class="sm" onclick="adicionarLinhaIng()">+ Adicionar ingrediente</button>
+    <br><br>
+    <button class="verde" onclick="salvarReceita()">Salvar Receita e Calcular Preco</button>
+  </div>
+  <div class="card">
+    <h2>Produtos Cadastrados</h2>
+    <div class="botoes-export">
+      <button class="sm exportar" onclick="window.open('/api/exportar/receitas-excel','_blank')">Baixar Excel</button>
+    </div>
+    <div id="lista-receitas"></div>
+  </div>
+</div>
+
+<!-- ABA: VENDAS -->
+<div id="vendas" class="aba">
+  <div class="card">
+    <h2>Registrar Venda</h2>
+    <div class="grid">
+      <select id="venda-rec"><option value="">-- Selecione o produto --</option></select>
+      <input type="number" id="venda-qtd" placeholder="Quantidade" min="1">
+      <button class="verde" onclick="registrarVenda()">Registrar</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Historico de Vendas</h2>
+    <div class="botoes-export">
+      <button class="sm exportar" onclick="window.open('/api/exportar/vendas-excel','_blank')">Excel</button>
+      <button class="sm exportar" onclick="window.open('/api/exportar/vendas-pdf','_blank')">PDF</button>
+    </div>
+    <div style="overflow-x:auto"><table id="tabela-vendas"></table></div>
+  </div>
+</div>
+
+<!-- ABA: FINANCEIRO -->
+<div id="financeiro" class="aba">
+  <div class="card">
+    <h2>Resumo Financeiro Geral</h2>
+    <div class="resumo">
+      <div class="card-resumo" style="background:#e6ffec">
+        <div>Total de Vendas</div><div class="valor" id="fin-vendas">R$ 0,00</div>
+      </div>
+      <div class="card-resumo" style="background:#fff0f3">
+        <div>Total de Custos</div><div class="valor baixo" id="fin-custos">R$ 0,00</div>
+      </div>
+      <div class="card-resumo" style="background:#fef8e6">
+        <div>Lucro Total</div><div class="valor ok" id="fin-lucro">R$ 0,00</div>
+      </div>
+      <div class="card-resumo" style="background:#e6f0ff">
+        <div>Qtd. Vendas</div><div class="valor" id="fin-qtd">0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Vendas por Dia</h2>
+    <div class="filtro-periodo">
+      <label style="font-size:.85rem">Periodo:</label>
+      <select id="periodo-dia" onchange="carregarGraficoDia()">
+        <option value="7">Ultimos 7 dias</option>
+        <option value="30" selected>Ultimos 30 dias</option>
+        <option value="90">Ultimos 90 dias</option>
+      </select>
+    </div>
+    <div class="grafico-container"><canvas id="grafico-dia"></canvas></div>
+  </div>
+
+  <div class="card">
+    <h2>Vendas por Produto</h2>
+    <div class="filtro-periodo">
+      <label style="font-size:.85rem">Periodo:</label>
+      <select id="periodo-prod" onchange="carregarGraficoProduto()">
+        <option value="7">Ultimos 7 dias</option>
+        <option value="30" selected>Ultimos 30 dias</option>
+        <option value="90">Ultimos 90 dias</option>
+      </select>
+    </div>
+    <div class="grafico-container"><canvas id="grafico-produto"></canvas></div>
+  </div>
+</div>
+
+<script>
+// ===== Abas =====
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('ativo'));
+    document.querySelectorAll('.aba').forEach(a=>a.classList.remove('ativo'));
+    tab.classList.add('ativo');
+    document.getElementById(tab.dataset.aba).classList.add('ativo');
+    if(tab.dataset.aba==='financeiro'){carregarResumo();carregarGraficoDia();carregarGraficoProduto();}
+    if(tab.dataset.aba==='vendas'){carregarVendas();}
+  };
+});
+
+const API={
+  async get(u){const r=await fetch(u);return r.json();},
+  async post(u,d){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});return r.json();},
+  async del(u){const r=await fetch(u,{method:'DELETE'});return r.json();}
+};
+
+const fmt=v=>'R$ '+Number(v).toFixed(2).replace('.',',');
+
+// ===== Ingredientes / Estoque =====
+async function carregarIngredientes(){
+  const ing=await API.get('/api/ingredientes');
+  const tb=document.getElementById('tabela-ing');
+  if(!ing.length){tb.innerHTML='<tr><td class="vazio">Nenhum ingrediente cadastrado</td></tr>';return;}
+  tb.innerHTML='<tr><th>Nome</th><th>Custo Unit.</th><th>Estoque</th><th>Und.</th><th>Acoes</th></tr>'+
+    ing.map(i=>`<tr>
+      <td>${i.nome}</td>
+      <td>R$ ${i.custo_unitario.toFixed(3)}</td>
+      <td class="${i.estoque_atual<=0?'baixo':''}">${i.estoque_atual.toFixed(2)} ${i.unidade}
+        ${i.estoque_atual<=0?'<span class="alerta baixo-estoque">Sem estoque!</span>':''}</td>
+      <td>${i.unidade}</td>
+      <td><button class="sm" onclick="ajustarEstoque(${i.id})">+/-</button>
+          <button class="sm vermelho" onclick="excluirIngrediente(${i.id})">X</button></td>
+    </tr>`).join('');
+}
+
+async function cadastrarIngrediente(){
+  const d={
+    nome:document.getElementById('ing-nome').value.trim(),
+    custo_total:parseFloat(document.getElementById('ing-custo').value),
+    quantidade_embalagem:parseFloat(document.getElementById('ing-qtd').value),
+    unidade:document.getElementById('ing-unidade').value,
+    estoque_atual:parseFloat(document.getElementById('ing-estoque').value)||0
+  };
+  if(!d.nome||isNaN(d.custo_total)||isNaN(d.quantidade_embalagem)){alert('Preencha nome, custo e quantidade.');return;}
+  await API.post('/api/ingredientes',d);
+  ['ing-nome','ing-custo','ing-qtd','ing-estoque'].forEach(id=>document.getElementById(id).value='');
+  carregarIngredientes();atualizarSelects();
+}
+
+async function excluirIngrediente(id){
+  if(confirm('Excluir este ingrediente?')){await API.del('/api/ingredientes/'+id);carregarIngredientes();atualizarSelects();}
+}
+
+async function ajustarEstoque(id){
+  const q=parseFloat(prompt('Quantidade (+ entrada / - saida):'));
+  if(isNaN(q))return;
+  await fetch(`/api/ingredientes/${id}/estoque?quantidade=${q}`,{method:'PATCH'});
+  carregarIngredientes();
+}
+
+// ===== Receitas =====
+async function atualizarSelects(){
+  const ing=await API.get('/api/ingredientes');
+  const opts=ing.map(i=>`<option value="${i.id}">${i.nome} (R$ ${i.custo_unitario.toFixed(3)}/${i.unidade})</option>`).join('');
+  document.querySelectorAll('.sel-ing').forEach(s=>{const v=s.value;s.innerHTML='<option value="">-- Selecione --</option>'+opts;s.value=v;});
+  const recs=await API.get('/api/receitas');
+  document.getElementById('venda-rec').innerHTML='<option value="">-- Selecione o produto --</option>'+
+    recs.map(r=>`<option value="${r.id}">${r.nome} - ${fmt(r.preco_venda/r.rendimento)}/und</option>`).join('');
+}
+
+function adicionarLinhaIng(){
+  const c=document.getElementById('rec-itens');
+  const div=document.createElement('div');
+  div.className='linha-ing';
+  div.innerHTML=`<select class="sel-ing"></select>
+    <input type="number" step="0.01" class="qtd-usada" placeholder="Qtd usada na receita">
+    <button class="sm vermelho" onclick="this.parentElement.remove()">X</button>`;
+  c.appendChild(div);
+  atualizarSelects();
+}
+
+async function salvarReceita(){
+  const itens=[];
+  document.querySelectorAll('.linha-ing').forEach(l=>{
+    const sel=l.querySelector('.sel-ing');const q=parseFloat(l.querySelector('.qtd-usada').value);
+    if(sel.value&&!isNaN(q)&&q>0)itens.push({ingrediente_id:parseInt(sel.value),quantidade_usada:q});
+  });
+  const nome=document.getElementById('rec-nome').value.trim();
+  const rend=parseInt(document.getElementById('rec-rend').value);
+  const margem=parseFloat(document.getElementById('rec-margem').value)/100;
+  if(!nome||!rend||itens.length===0){alert('Preencha nome, rendimento e ao menos 1 ingrediente.');return;}
+  await API.post('/api/receitas',{nome,rendimento:rend,margem_lucro:margem,itens});
+  document.getElementById('rec-nome').value='';document.getElementById('rec-rend').value='';
+  document.getElementById('rec-itens').innerHTML='';
+  alert('Receita salva! Preco calculado automaticamente.');
+  carregarReceitas();atualizarSelects();
+}
+
+async function carregarReceitas(){
+  const recs=await API.get('/api/receitas');
+  const div=document.getElementById('lista-receitas');
+  if(!recs.length){div.innerHTML='<p class="vazio">Nenhuma receita cadastrada</p>';return;}
+  div.innerHTML=recs.map(r=>{
+    const cu=r.custo_total/r.rendimento;const pv=r.preco_venda/r.rendimento;
+    return `<div class="card" style="margin:8px 0;padding:12px">
+      <h3>${r.nome}</h3>
+      <p style="font-size:.85rem;color:#666">Rende ${r.rendimento} und | Margem ${(r.margem_lucro*100).toFixed(0)}%</p>
+      <p style="font-size:.9rem">Custo/und: <strong>${fmt(cu)}</strong> &rarr; Preco venda/und: <strong style="color:var(--rosa);font-size:1.05rem">${fmt(pv)}</strong></p>
+      <button class="sm vermelho" onclick="excluirReceita(${r.id})">Excluir</button>
+    </div>`;
+  }).join('');
+}
+
+async function excluirReceita(id){
+  if(confirm('Excluir esta receita?')){await API.del('/api/receitas/'+id);carregarReceitas();atualizarSelects();}
+}
+
+// ===== Vendas =====
+async function registrarVenda(){
+  const rid=parseInt(document.getElementById('venda-rec').value);
+  const q=parseInt(document.getElementById('venda-qtd').value);
+  if(!rid||!q){alert('Selecione produto e quantidade.');return;}
+  await API.post('/api/vendas',{receita_id:rid,quantidade:q});
+  document.getElementById('venda-qtd').value='';
+  alert('Venda registrada! Estoque atualizado automaticamente.');
+  carregarVendas();carregarIngredientes();
+}
+
+async function carregarVendas(){
+  const v=await API.get('/api/vendas');
+  const tb=document.getElementById('tabela-vendas');
+  if(!v.length){tb.innerHTML='<tr><td class="vazio">Nenhuma venda registrada</td></tr>';return;}
+  tb.innerHTML='<tr><th>Data</th><th>Produto</th><th>Qtd</th><th>Total</th><th>Lucro</th></tr>'+
+    v.map(x=>`<tr>
+      <td>${new Date(x.data).toLocaleDateString('pt-BR')}</td>
+      <td>${x.produto_nome}</td><td>${x.quantidade}</td>
+      <td>${fmt(x.valor_total)}</td><td class="ok">${fmt(x.lucro)}</td>
+    </tr>`).join('');
+}
+
+// ===== Financeiro + Graficos =====
+let chartDia=null,chartProd=null;
+
+async function carregarResumo(){
+  const r=await API.get('/api/resumo-financeiro');
+  document.getElementById('fin-vendas').textContent=fmt(r.total_vendas);
+  document.getElementById('fin-custos').textContent=fmt(r.total_custos);
+  document.getElementById('fin-lucro').textContent=fmt(r.total_lucro);
+  document.getElementById('fin-qtd').textContent=r.quantidade_vendas;
+}
+
+async function carregarGraficoDia(){
+  const dias=document.getElementById('periodo-dia').value;
+  const dados=await API.get('/api/graficos/vendas-por-dia?dias='+dias);
+  const ctx=document.getElementById('grafico-dia').getContext('2d');
+  if(chartDia)chartDia.destroy();
+  chartDia=new Chart(ctx,{
+    type:'line',
+    data:{labels:dados.map(d=>d.dia),datasets:[{label:'Vendas (R$)',data:dados.map(d=>d.valor),borderColor:'#d63384',backgroundColor:'rgba(214,51,132,.15)',fill:true,tension:.3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}
+  });
+}
+
+async function carregarGraficoProduto(){
+  const dias=document.getElementById('periodo-prod').value;
+  const dados=await API.get('/api/graficos/vendas-por-produto?dias='+dias);
+  const ctx=document.getElementById('grafico-produto').getContext('2d');
+  if(chartProd)chartProd.destroy();
+  chartProd=new Chart(ctx,{
+    type:'bar',
+    data:{labels:dados.map(d=>d.produto),datasets:[{label:'Vendas (R$)',data:dados.map(d=>d.valor),backgroundColor:['#d63384','#0d6efd','#198754','#ffc107','#fd7e14','#6f42c1','#20c997','#e83e8c']}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}
+  });
+}
+
+// ===== Init =====
+window.addEventListener('load',()=>{
+  carregarIngredientes();
+  carregarReceitas();
+  adicionarLinhaIng();
+});
+</script>
+</body>
+</html>
