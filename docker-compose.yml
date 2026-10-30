@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  doceria:
+    build: .
+    container_name: sistema-doceria
+    ports:
+      - "8000:8000"
+    volumes:
+      - doceria_data:/app
+    restart: unless-stopped
+
+volumes:
+  doceria_data:
